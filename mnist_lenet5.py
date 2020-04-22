@@ -11,13 +11,13 @@ torch.manual_seed(16)
 np.random.seed(16)
 
 # get train data
-mnist = torchvision.datasets.MNIST(root='data', train=True, download=True)
+mnist = torch.load('/tigress/dkchae/MNIST/processed/training.pt')
 trainimages = mnist.data
 trainlabels = mnist.targets
 IMAGE_SAMPLES = trainimages.shape[0]
 
 # get test data
-mnist_test = torchvision.datasets.MNIST(root='data', train=False, download=True)
+mnist_test = torch.load('/tigress/dkchae/MNIST/processed/test.pt')
 testimages = mnist_test.data
 testlabels = mnist_test.targets
 
