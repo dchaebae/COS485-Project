@@ -11,15 +11,11 @@ torch.manual_seed(16)
 np.random.seed(16)
 
 # get train data
-mnist = torch.load('/tigress/dkchae/MNIST/processed/training.pt')
-trainimages = mnist.data
-trainlabels = mnist.targets
+trainimages, trainlabels = torch.load('/tigress/dkchae/MNIST/processed/training.pt')
 IMAGE_SAMPLES = trainimages.shape[0]
 
 # get test data
-mnist_test = torch.load('/tigress/dkchae/MNIST/processed/test.pt')
-testimages = mnist_test.data
-testlabels = mnist_test.targets
+testimages, testlabels = torch.load('/tigress/dkchae/MNIST/processed/test.pt')
 
 # split up the training set into
 indices = []
@@ -362,7 +358,7 @@ batch_size = 128
 learning_rate = 1e-3
 
 model = autoencoder()
-criterion = nn.CrossEntropyLoss()
+criterion = nn.MSE()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate,
                              weight_decay=1e-5)
 
