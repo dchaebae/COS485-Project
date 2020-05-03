@@ -6,28 +6,28 @@ import torchvision
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+from torch.autograd import Variable
+import os
 
 torch.manual_seed(16)
 np.random.seed(16)
 
 # get train data
-mnist = torch.load('/tigress/dkchae/MNIST/processed/training.pt')
+mnist = torchvision.datasets.MNIST(root='data', train=True, download=True)
 trainimages = mnist.data
 trainlabels = mnist.targets
 IMAGE_SAMPLES = trainimages.shape[0]
-
 # get test data
-mnist_test = torch.load('/tigress/dkchae/MNIST/processed/test.pt')
+mnist_test = torchvision.datasets.MNIST(root='data', train=False, download=True)
 testimages = mnist_test.data
 testlabels = mnist_test.targets
 
 # split up the training set into
 indices = []
+#plot_samples = np.array([125, 250, 500, 1000, 2000, 4000])
 plot_samples = np.array([125, 250, 500, 1000, 2000, 4000, 8000, 16000, 32000, 60000])
 for i in range(plot_samples.shape[0]):
   indices.append(np.random.choice(range(IMAGE_SAMPLES), plot_samples[i], replace=False))
-
-from copy import deepcopy
 
 # Taken from https://github.com/Bjarten/early-stopping-pytorch
 class EarlyStopping:
@@ -82,14 +82,10 @@ class LeNet5(nn.Module):
         self.C1 = nn.Conv2d(1, 6, kernel_size=(5, 5))
         self.S2 = nn.AvgPool2d(kernel_size=(2, 2), stride=2)
 
-        ####### Complete the defition of C3 and S4 ##########
-        # C3 is a convolutional layer with 16 5x5 kernels
-        # S4 is a max pooling layer with 2x2 kernel and stride 2
 
         self.C3 = nn.Conv2d(6, 16, kernel_size=(5,5))
         self.S4 = nn.AvgPool2d(kernel_size=(2, 2), stride=2)
         
-        #####################################################
 
         self.C5 = nn.Conv2d(16, 120, kernel_size=(5, 5))
         self.F6 = nn.Linear(120, 84)
@@ -106,17 +102,10 @@ class LeNet5(nn.Module):
         x = self.S4(x)
         x = torch.tanh(self.C5(x))
 
-        ##################################################################################
-
-        # convert (batch, 120, 1, 1) feature maps to 1d features of size (batch, 120)
         x = x.view(x.size(0), -1) 
 
-        # pass the activation to the fully connected layer F6 followed by a tanh activation
-        # output size changes from (batch, 120) to (batch, 86)
         x = torch.tanh(self.F6(x))
 
-        # pass the activation to the final fully connected layer OL followed by a tanh activation
-        # output size changes from (batch, 86) to (batch, 10)
         x = torch.tanh(self.OL(x))
         
         return x
@@ -135,7 +124,95 @@ class LeNet5(nn.Module):
         self.F6.weight = torch.nn.Parameter(deepcopy(model_state_dict['F6.weight']))
         self.F6.bias = torch.nn.Parameter(deepcopy(model_state_dict['F6.bias']))
 
-def train(train_set, test_set, model_state_dict = None, batchsize = 32, nepoch=1000, patience=5):
+def to_img(x):
+    x = x.view(x.size(0), 1, 32, 32)
+    return x
+class Flatten(torch.nn.Module):
+    def forward(self, x):
+        x = x.view(x.size(0), -1) 
+        return x
+
+  
+class Unflatten(torch.nn.Module):
+    def forward(self, x):
+        x = x.view(1, 120, 1, 1) 
+        return x
+
+
+# Autoencoder
+class autoencoder(nn.Module):
+    def __init__(self):
+        super(autoencoder, self).__init__()
+        self.C1 = nn.Conv2d(1, 6, kernel_size=(5, 5))
+        self.S2 = nn.MaxPool2d(kernel_size=(2, 2), stride=2, return_indices = True)
+
+        self.C3 = nn.Conv2d(6, 16, kernel_size=(5,5))
+        self.S4 = nn.MaxPool2d(kernel_size=(2, 2), stride=2, return_indices = True)
+
+        self.C5 = nn.Conv2d(16, 120, kernel_size=(5, 5))
+        self.F6 = nn.Linear(120, 84)
+
+        self.r_F6 = nn.Linear(84, 120)
+        self.r_C5 = nn.ConvTranspose2d(120, 16, kernel_size=(5, 5))
+
+        self.r_S4 = nn.MaxUnpool2d(kernel_size=(2, 2), stride=2)
+        self.r_C3 = nn.ConvTranspose2d(16, 6, kernel_size=(5,5))
+
+        self.r_S2 = nn.MaxUnpool2d(kernel_size=(2, 2), stride=2)
+        self.r_C1 = nn.ConvTranspose2d(6, 1, kernel_size=(5, 5))
+
+
+    def forward_encode(self, x):
+      x = torch.tanh(self.C1(x))
+      x, self.inds1 = self.S2(x)
+
+      x = torch.tanh(self.C3(x))
+      x, self.inds2 = self.S4(x)
+
+      x = torch.tanh(self.C5(x))
+      temp = Flatten()
+      x = temp.forward(x)
+      x = self.F6(x)
+      return x
+
+    def forward_decode(self, x):
+      x = self.r_F6(x)
+      temp = Unflatten()
+      x = temp.forward(x)
+      x = torch.tanh(x)
+      
+      x = self.r_C5(x)
+      x = self.r_S4(x, self.inds2)
+      x = torch.tanh(x)
+      x = self.r_C3(x)
+      
+      x = self.r_S2(x, self.inds1)
+      x = torch.tanh(x)
+      x = self.r_C1(x)
+      return x
+
+    def forward(self, x):
+      x = self.forward_encode(x)
+      x = self.forward_decode(x)
+      return x
+
+    def _initialize_weights(self, model_state_dict):
+      self.C1.weight = torch.nn.Parameter(deepcopy(model_state_dict['C1.weight']))
+      self.C1.bias = torch.nn.Parameter(deepcopy(model_state_dict['C1.bias']))
+
+      self.C3.weight = torch.nn.Parameter(deepcopy(model_state_dict['C3.weight']))
+      self.C3.bias = torch.nn.Parameter(deepcopy(model_state_dict['C3.bias']))
+
+      self.C5.weight = torch.nn.Parameter(deepcopy(model_state_dict['C5.weight']))
+      self.C5.bias = torch.nn.Parameter(deepcopy(model_state_dict['C5.bias']))
+        
+        
+      self.F6.weight = torch.nn.Parameter(deepcopy(model_state_dict['F6.weight']))
+      self.F6.bias = torch.nn.Parameter(deepcopy(model_state_dict['F6.bias']))
+
+
+# TRAIN FUNCTION
+def train(train_set, test_set, model_state_dict = None, batchsize = 32, nepoch=100, patience=3):
 
   train_images, train_labels = train_set
   test_images, test_labels = test_set
@@ -150,7 +227,7 @@ def train(train_set, test_set, model_state_dict = None, batchsize = 32, nepoch=1
 
   t_start = time.time()
   # use SGD optimizer
-  optimizer = optim.SGD(lenet5.parameters(), lr=0.05)
+  optimizer = optim.SGD(lenet5.parameters(), lr=0.1)
 
   # Put in Early Stopping
   early_stopping = EarlyStopping(patience=patience)
@@ -224,218 +301,113 @@ def train(train_set, test_set, model_state_dict = None, batchsize = 32, nepoch=1
   pred = torch.argmax(out, dim=1)
   err_test = torch.mean((pred != test_labels).float())
 
-  return err_train, err_test
+  return err_train, err_test, lenet5.state_dict()
 
-# RUN THE FIRST TEST
-print('=============Running Baseline===========')
+# Train autoencoder
+def train_autoencoder(trainimages, model_state_dict = None, batchsize = 128, num_epochs=10, patience=3, lr=1e-3):
+
+  model = autoencoder()
+  if model_state_dict is not None:
+    print('initialize with weights!')
+    model._initialize_weights(model_state_dict)
+
+  criterion = nn.MSELoss()
+  optimizer = torch.optim.Adam(model.parameters(), lr=lr,
+                              weight_decay=1e-5)
+
+  for epoch in range(num_epochs):
+      epoch_loss = 0
+
+      for i in torch.randperm(trainimages.shape[0]):
+          img = trainimages[i]
+          img2 = torch.zeros([1, 1, 32, 32])
+          img2[:, 0, 2: -2, 2: -2] = img.float() / 255.
+          img = Variable(img2)
+          # ===================forward=====================
+          output = model(img)
+          loss = criterion(output, img)
+          epoch_loss += loss.data.item()
+          # ===================backward====================
+          optimizer.zero_grad()
+          loss.backward()
+          optimizer.step()
+      # ===================log========================
+      epoch_loss /= trainimages.shape[0]
+      print('epoch [{}/{}], loss:{:.4f}'
+            .format(epoch+1, num_epochs, epoch_loss))
+
+      print(pic.reshape(32, 32)[15, :])
+      print(img.reshape(32, 32)[15, :])
+  return model.state_dict()
+
+
+import time
+flip_num = 5
+model_state = None
 test_tuple = (testimages, testlabels)
-err_train_all = np.zeros(len(indices))
-err_test_all = np.zeros(len(indices))
+err_train_all = np.zeros((flip_num+1, len(indices)))
+err_test_all = np.zeros((flip_num+1, len(indices)))
+print('Running LeNet5 Without Flipping-----------------------')
 for i in range(len(indices)):
+  start = time.time()
   print('Running %d of %d' % (i+1, len(indices)))
   train_tuple = (trainimages[indices[i]], trainlabels[indices[i]])
-  x = train(train_tuple, test_tuple)
-  print(x)
-  err_train_all[i], err_test_all[i] = x
+  err_train_all[0, i], err_test_all[0, i], _ = train(train_tuple, test_tuple)
+  print(err_train_all[0, i])
+  print(err_test_all[0, i])
+  end = time.time()
+  hours, rem = divmod(end-start, 3600)
+  minutes, seconds = divmod(rem, 60)
+  print("time elapsed: {:0>2}:{:0>2}:{:05.2f}".format(int(hours),int(minutes),seconds))
+
+for j in range(len(indices)):
+  print('RUNNING %d of %d, n=%d--------------------------' % (j+1, len(indices), len(indices[j])))
+  for i in range(1, flip_num):
+    print('Running flip %d--------------------------' % (i))
+    print('Training autoencoder...')
+    start = time.time()
+    model_state = train_autoencoder(trainimages, model_state, num_epochs=3)
+    end = time.time()
+    hours, rem = divmod(end-start, 3600)
+    minutes, seconds = divmod(rem, 60)
+    print("time elapsed: {:0>2}:{:0>2}:{:05.2f}".format(int(hours),int(minutes),seconds))
+    print('Training LeNet5...')
+    start = time.time()
+    train_tuple = (trainimages[indices[j]], trainlabels[indices[j]])
+    err_train_all[i, j], err_test_all[i, j], model_state = train(train_tuple, test_tuple, model_state)
+    print(err_train_all[i, j])
+    print(err_test_all[i, j])
+    end = time.time()
+    hours, rem = divmod(end-start, 3600)
+    minutes, seconds = divmod(rem, 60)
+    print("time elapsed: {:0>2}:{:0>2}:{:05.2f}".format(int(hours),int(minutes),seconds))
 print(err_train_all)
 print(err_test_all)
 
 
-import torch
-import torchvision
-from torch import nn
-from torch.autograd import Variable
-from torch.utils.data import DataLoader
-from torchvision import transforms
-from torchvision.utils import save_image
-from torchvision.datasets import MNIST
-import os
-
-if not os.path.exists('./dc_img'):
-    os.mkdir('./dc_img')
-
-
-def to_img(x):
-    x = x.view(x.size(0), 1, 32, 32)
-    return x
-
-class Flatten(torch.nn.Module):
-    def forward(self, x):
-        x = x.view(x.size(0), -1) 
-        return x
-
-  
-class Unflatten(torch.nn.Module):
-    def forward(self, x):
-        x = x.view(1, 120, 1, 1) 
-        return x
-
-
-class autoencoder(nn.Module):
-    def __init__(self):
-        super(autoencoder, self).__init__()
-        self.C1 = nn.Conv2d(1, 6, kernel_size=(5, 5))
-        self.S2 = nn.MaxPool2d(kernel_size=(2, 2), stride=2, return_indices = True)
-
-        self.C3 = nn.Conv2d(6, 16, kernel_size=(5,5))
-        self.S4 = nn.MaxPool2d(kernel_size=(2, 2), stride=2, return_indices = True)
-
-        self.C5 = nn.Conv2d(16, 120, kernel_size=(5, 5))
-        self.F6 = nn.Linear(120, 84)
-
-
-        # self.encoder = nn.Sequential(
-        #   self.C1,
-        #   nn.Tanh(),
-        #   self.S2,
-        #   self.C3,
-        #   nn.Tanh(),
-        #   self.S4,
-        
-        #   self.C5,
-        #   nn.Tanh(),
-        #   Flatten(),
-        #   self.F6,
-
-        # )
-
-        self.r_F6 = nn.Linear(84, 120)
-        self.r_C5 = nn.ConvTranspose2d(120, 16, kernel_size=(5, 5))
-
-        self.r_S4 = nn.MaxUnpool2d(kernel_size=(2, 2), stride=2)
-        self.r_C3 = nn.ConvTranspose2d(16, 6, kernel_size=(5,5))
-
-        self.r_S2 = nn.MaxUnpool2d(kernel_size=(2, 2), stride=2)
-        self.r_C1 = nn.ConvTranspose2d(6, 1, kernel_size=(5, 5))
-
-
-        # self.decoder = nn.Sequential(
-        #     self.r_F6,
-        #     Unflatten(),
-        #     nn.Tanh(),
-        #     self.r_C5,  # b, 16, 5, 5
-        #     self.r_S4,
-        #     self.r_C3,  # b, 8, 15, 15
-        #     nn.Tanh(),
-        #     self.r_S2,
-        #     nn.Tanh(),
-        #     self.r_C1  # b, 1, 28, 28
-
-        # )
-
-    def forward_encode(self, x):
-      x = torch.tanh(self.C1(x))
-      x, self.inds1 = self.S2(x)
-
-      x = torch.tanh(self.C3(x))
-      x, self.inds2 = self.S4(x)
-
-      x = torch.tanh(self.C5(x))
-      temp = Flatten()
-      x = temp.forward(x)
-      x = self.F6(x)
-      return x
-
-    def forward_decode(self, x):
-      x = self.r_F6(x)
-      temp = Unflatten()
-      x = temp.forward(x)
-      x = torch.tanh(x)
-      
-      x = self.r_C5(x)
-      x = self.r_S4(x, self.inds2)
-      x = torch.tanh(x)
-      x = self.r_C3(x)
-      
-      x = self.r_S2(x, self.inds1)
-      x = torch.tanh(x)
-      x = self.r_C1(x)
-      return x
-
-    def forward(self, x):
-      x = self.forward_encode(x)
-      x = self.forward_decode(x)
-      return x
-
-num_epochs = 10
-batch_size = 128
-learning_rate = 1e-3
-
-model = autoencoder()
-criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate,
-                             weight_decay=1e-5)
-
-print('==========Train Autoencoder==========')
-for epoch in range(num_epochs):
-    epoch_loss = 0
-
-    for i in torch.randperm(trainimages.shape[0]):
-        img = trainimages[i]
-        img2 = torch.zeros([1, 1, 32, 32])
-        img2[:, 0, 2: -2, 2: -2] = img.float() / 255.
-        img = Variable(img2)
-        # ===================forward=====================
-        output = model(img)
-        loss = criterion(output, img)
-        epoch_loss += loss.data.item()
-        # ===================backward====================
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-    # ===================log========================
-    epoch_loss /= trainimages.shape[0]
-    print('epoch [{}/{}], loss:{:.4f}'
-          .format(epoch+1, num_epochs, epoch_loss))
-    if epoch % 2 == 0 or epoch == num_epochs - 1:
-        pic = to_img(output.cpu().data)
-
-        plt.figure(figsize=(15,5))
-        plt.subplot(121)
-        plt.imshow(pic.reshape(32, 32))
-        plt.subplot(122)
-        plt.imshow(img.reshape(32, 32))
-        plt.grid(False)
-        plt.show()
-
-model_state_dict = deepcopy(model.state_dict())
-
-print('=========Running Initialized=========')
-test_tuple = (testimages, testlabels)
-err_train_all_initialized = np.zeros(len(indices))
-err_test_all_initialized = np.zeros(len(indices))
-for i in range(len(indices)):
-  print('Running %d of %d' % (i+1, len(indices)))
-  train_tuple = (trainimages[indices[i]], trainlabels[indices[i]])
-  x= train(train_tuple, test_tuple, model_state_dict)
-  print(x)
-  err_train_all_initialized[i], err_test_all_initialized[i] = x
-print(err_train_all_initialized)
-print(err_test_all_initialized)
-
 
 log_plot_samples = np.log2(plot_samples)
 
-data = (err_train_all, err_test_all)
-data_initialized = (err_train_all_initialized, err_test_all_initialized)
-groups = ("Training", "Test")
+groups = ['Flip %d' % (d) for d in range(flip_num+5)]
 
 # Create plot
 fig = plt.figure()
-ax1 = fig.add_subplot(2, 1, 1)
-ax1.plot(log_plot_samples, data[0], 'go', label=groups[0])
-ax1.plot(log_plot_samples, data[1], 'bo', label=groups[1])
-ax1.set_title('Training and Test Error Without Unlabeled Initialization')
+ax1 = fig.add_subplot(1, 1, 1)
+for i in range(flip_num + 1):
+  ax1.plot(log_plot_samples, err_train_all[i], label=groups[i])
+ax1.set_title('Training Error')
 ax1.legend(loc='upper right')
 ax1.set_xlabel('Log2 Number of Samples')
 ax1.set_ylabel('Proportion Error Rate')
+plt.savefig('train_error.png')
 
-ax2 = fig.add_subplot(2, 1, 2)
-ax2.plot(log_plot_samples, data_initialized[0], 'go', label=groups[0])
-ax2.plot(log_plot_samples, data_initialized[1], 'bo', label=groups[1])
-ax2.set_title('Training and Test Error With Unlabeled Initialization')
-ax2.legend(loc='upper right')
-ax2.set_xlabel('Log2 Number of Samples')
-ax2.set_ylabel('Proportion Error Rate')
-
-plt.savefig('errors.png')
+# Create plot
+fig = plt.figure()
+ax1 = fig.add_subplot(1, 1, 1)
+for i in range(flip_num + 1):
+  ax1.plot(log_plot_samples, err_test_all[i], label=groups[i])
+ax1.set_title('Test Error')
+ax1.legend(loc='upper right')
+ax1.set_xlabel('Log2 Number of Samples')
+ax1.set_ylabel('Proportion Error Rate')
+plt.savefig('test_error.png')
