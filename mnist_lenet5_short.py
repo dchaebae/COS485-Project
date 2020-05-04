@@ -364,7 +364,7 @@ for j in range(len(indices)):
     print('Running flip %d--------------------------' % (i))
     print('Training autoencoder...')
     start = time.time()
-    model_state = train_autoencoder(trainimages, model_state, num_epochs=4)
+    model_state = train_autoencoder(trainimages, model_state, num_epochs=3)
     end = time.time()
     hours, rem = divmod(end-start, 3600)
     minutes, seconds = divmod(rem, 60)
