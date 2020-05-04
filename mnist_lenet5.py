@@ -331,7 +331,8 @@ def train_autoencoder(trainimages, model_state_dict = None, batchsize = 128, num
       epoch_loss /= trainimages.shape[0]
       print('epoch [{}/{}], loss:{:.4f}'
             .format(epoch+1, num_epochs, epoch_loss))
-
+      pic = to_img(output.cpu().data)
+      img = to_img(img)
       print(pic.reshape(32, 32)[15, :])
       print(img.reshape(32, 32)[15, :])
   return model.state_dict()
@@ -359,11 +360,11 @@ for i in range(len(indices)):
 
 for j in range(len(indices)):
   print('RUNNING %d of %d, n=%d--------------------------' % (j+1, len(indices), len(indices[j])))
-  for i in range(1, flip_num):
+  for i in range(1, flip_num+1):
     print('Running flip %d--------------------------' % (i))
     print('Training autoencoder...')
     start = time.time()
-    model_state = train_autoencoder(trainimages, model_state, num_epochs=3)
+    model_state = train_autoencoder(trainimages, model_state, num_epochs=5)
     end = time.time()
     hours, rem = divmod(end-start, 3600)
     minutes, seconds = divmod(rem, 60)
