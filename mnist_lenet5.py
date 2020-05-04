@@ -7,6 +7,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.autograd import Variable
+from copy import deepcopy
 import os
 
 torch.manual_seed(16)
@@ -364,7 +365,7 @@ for j in range(len(indices)):
     print('Running flip %d--------------------------' % (i))
     print('Training autoencoder...')
     start = time.time()
-    model_state = train_autoencoder(trainimages, model_state, num_epochs=5)
+    model_state = train_autoencoder(trainimages, model_state, num_epochs=8)
     end = time.time()
     hours, rem = divmod(end-start, 3600)
     minutes, seconds = divmod(rem, 60)
