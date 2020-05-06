@@ -419,3 +419,13 @@ ax1.legend(loc='upper right')
 ax1.set_xlabel('Log2 Number of Samples')
 ax1.set_ylabel('Proportion Error Rate')
 plt.savefig('test_error_short.png')
+
+# Create plot
+fig = plt.figure()
+ax1 = fig.add_subplot(1, 1, 1)
+ax1.plot(range(flip_num * num_autoencoder_epochs), np.flatten(epoch_losses))
+ax1.set_title('Autoencoder Loss by Epoch')
+ax1.legend(loc='upper right')
+ax1.set_xlabel('Epoch')
+ax1.set_ylabel('Loss')
+plt.savefig('epoch_loss.png')
