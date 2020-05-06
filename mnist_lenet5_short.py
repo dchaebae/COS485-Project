@@ -306,7 +306,7 @@ def train(train_set, test_set, model_state_dict = None, batchsize = 32, nepoch=5
 
 # Train autoencoder
 def train_autoencoder(trainimages, model_state_dict = None, batchsize = 128, num_epochs=10, patience=3, lr=1e-3):
-
+  losses = np.zeros(num_epochs)
   model = autoencoder()
   if model_state_dict is not None:
     print('initialize with weights!')
@@ -334,13 +334,14 @@ def train_autoencoder(trainimages, model_state_dict = None, batchsize = 128, num
           optimizer.step()
       # ===================log========================
       epoch_loss /= trainimages.shape[0]
+      losses[epoch] = epoch_loss
       print('epoch [{}/{}], loss:{:.4f}'
             .format(epoch+1, num_epochs, epoch_loss))
       pic = to_img(output.cpu().data)
       img = to_img(img)
       print(pic.reshape(32, 32)[15, :])
       print(img.reshape(32, 32)[15, :])
-  return model.state_dict()
+  return model.state_dict(), losses
 
 
 import time
@@ -350,6 +351,10 @@ model_state = None
 test_tuple = (testimages, testlabels)
 err_train_all = np.zeros((flip_num+1, len(indices)))
 err_test_all = np.zeros((flip_num+1, len(indices)))
+
+num_autoencoder_epochs = 16
+epoch_losses = np.zeros((flip_num, num_autoencoder_epochs))
+
 print('Running LeNet5 Without Flipping-----------------------')
 for i in range(len(indices)):
   start = time.time()
@@ -369,7 +374,7 @@ for j in range(len(indices)):
     print('Running flip %d--------------------------' % (i))
     print('Training autoencoder...')
     start = time.time()
-    model_state = train_autoencoder(trainimages, model_state, num_epochs=16)
+    model_state, epoch_losses[i-1, :] = train_autoencoder(trainimages, model_state, num_epochs=num_autoencoder_epochs)
     end = time.time()
     hours, rem = divmod(end-start, 3600)
     minutes, seconds = divmod(rem, 60)
