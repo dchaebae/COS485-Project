@@ -384,6 +384,8 @@ for j in range(len(indices)):
     hours, rem = divmod(end-start, 3600)
     minutes, seconds = divmod(rem, 60)
     print("time elapsed: {:0>2}:{:0>2}:{:05.2f}".format(int(hours),int(minutes),seconds))
+  print('Epoch losses')
+  print(epoch_losses)
 print(err_train_all)
 print(err_test_all)
 
