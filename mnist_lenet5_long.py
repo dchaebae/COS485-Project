@@ -404,7 +404,7 @@ ax1.set_title('Training Error')
 ax1.legend(loc='upper right')
 ax1.set_xlabel('Log2 Number of Samples')
 ax1.set_ylabel('Proportion Error Rate')
-plt.savefig('train_error_short.png')
+plt.savefig('train_error_long.png')
 
 # Create plot
 fig = plt.figure()
@@ -415,7 +415,7 @@ ax1.set_title('Test Error')
 ax1.legend(loc='upper right')
 ax1.set_xlabel('Log2 Number of Samples')
 ax1.set_ylabel('Proportion Error Rate')
-plt.savefig('test_error_short.png')
+plt.savefig('test_error_long.png')
 
 # Create plot
 fig = plt.figure()
