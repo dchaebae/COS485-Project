@@ -21,9 +21,14 @@ testimages, testlabels = torch.load('/tigress/dkchae/MNIST/processed/test.pt')
 
 # split up the training set into
 indices = []
-plot_samples = np.array([250, 1000, 4000, 16000, 60000])
+reduced = 8000
+order = np.random.shuffle(np.arange(IMAGE_SAMPLES))
+trainimages = trainimages[:reduced]
+trainlabels = trainlabels[:reduced]
+#plot_samples = np.array([250, 1000, 4000, 16000, 60000])
+plot_samples = np.array([250, 500, 1000, 2000, 4000, 8000])
 for i in range(plot_samples.shape[0]):
-  indices.append(np.random.choice(range(IMAGE_SAMPLES), plot_samples[i], replace=False))
+  indices.append(np.random.choice(range(reduced), plot_samples[i], replace=False))
 
 # Taken from https://github.com/Bjarten/early-stopping-pytorch
 class EarlyStopping:
@@ -208,7 +213,7 @@ class autoencoder(nn.Module):
 
 
 # TRAIN FUNCTION
-def train(train_set, test_set, model_state_dict = None, batchsize = 32, nepoch=100, patience=3):
+def train(train_set, test_set, model_state_dict = None, batchsize = 32, nepoch=500, patience=3):
 
   train_images, train_labels = train_set
   test_images, test_labels = test_set
