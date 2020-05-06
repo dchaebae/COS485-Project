@@ -213,7 +213,7 @@ class autoencoder(nn.Module):
 
 
 # TRAIN FUNCTION
-def train(train_set, test_set, model_state_dict = None, batchsize = 32, nepoch=500, patience=3):
+def train(train_set, test_set, model_state_dict = None, batchsize = 32, nepoch=500, patience=5):
 
   train_images, train_labels = train_set
   test_images, test_labels = test_set
