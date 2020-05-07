@@ -21,54 +21,9 @@ testimages, testlabels = torch.load('/tigress/dkchae/MNIST/processed/test.pt')
 
 # split up the training set into
 indices = []
-plot_samples = np.array([8000, 16000, 32000])
+plot_samples = np.array([125, 250, 500, 1000, 2000, 4000, 8000, 16000, 32000, 60000])
 for i in range(plot_samples.shape[0]):
   indices.append(np.random.choice(range(IMAGE_SAMPLES), plot_samples[i], replace=False))
-
-# Taken from https://github.com/Bjarten/early-stopping-pytorch
-class EarlyStopping:
-    """Early stops the training if validation loss doesn't improve after a given patience."""
-    def __init__(self, patience=7, verbose=False, delta=0):
-        """
-        Args:
-            patience (int): How long to wait after last time validation loss improved.
-                            Default: 7
-            verbose (bool): If True, prints a message for each validation loss improvement. 
-                            Default: False
-            delta (float): Minimum change in the monitored quantity to qualify as an improvement.
-                            Default: 0
-        """
-        self.patience = patience
-        self.verbose = verbose
-        self.counter = 0
-        self.best_score = None
-        self.early_stop = False
-        self.val_loss_min = np.Inf
-        self.delta = delta
-
-    def __call__(self, val_loss, model):
-
-        score = -val_loss
-
-        if self.best_score is None:
-            self.best_score = score
-            self.save_checkpoint(val_loss, model)
-        elif score < self.best_score + self.delta:
-            self.counter += 1
-            if self.verbose:
-              print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
-            if self.counter >= self.patience:
-                self.early_stop = True
-        else:
-            self.best_score = score
-            self.save_checkpoint(val_loss, model)
-            self.counter = 0
-
-    def save_checkpoint(self, val_loss, model):
-        '''Saves model when validation loss decrease.'''
-        if self.verbose:
-            print(f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
-        self.val_loss_min = val_loss
 
 class LeNet5(nn.Module):
 
@@ -208,11 +163,13 @@ class autoencoder(nn.Module):
 
 
 # TRAIN FUNCTION
-def train(train_set, test_set, model_state_dict = None, batchsize = 32, nepoch=500, patience=5):
+def train(train_set, test_set, model_state_dict = None, batchsize = 32, nepoch=500):
 
   train_images, train_labels = train_set
   test_images, test_labels = test_set
 
+  # hold presentations constant!
+  nepoch = int((6000000) / len(train_images))
 
   ntrain = train_images.shape[0];  # number of training examples
 
@@ -224,9 +181,6 @@ def train(train_set, test_set, model_state_dict = None, batchsize = 32, nepoch=5
   t_start = time.time()
   # use SGD optimizer
   optimizer = optim.SGD(lenet5.parameters(), lr=0.1)
-
-  # Put in Early Stopping
-  early_stopping = EarlyStopping(patience=patience)
 
   train_losses = []
 
@@ -266,14 +220,6 @@ def train(train_set, test_set, model_state_dict = None, batchsize = 32, nepoch=5
         
       train_loss = np.mean(train_losses)
 
-      early_stopping(train_loss, lenet5)
-
-      if early_stopping.early_stop:
-        print("Early stopping at Epoch %d, batch %d of batchsize %d" % (iepoch, 
-                                                                        int(batch_num/batchsize),
-                                                                        batchsize))
-        break
-
       # reset the list for next iteration
       train_losses = []
 
@@ -300,7 +246,7 @@ def train(train_set, test_set, model_state_dict = None, batchsize = 32, nepoch=5
   return err_train, err_test, lenet5.state_dict()
 
 # Train autoencoder
-def train_autoencoder(trainimages, model_state_dict = None, batchsize = 128, num_epochs=10, patience=3, lr=1e-3):
+def train_autoencoder(trainimages, model_state_dict = None, batchsize = 128, num_epochs=10, lr=1e-3):
   losses = np.zeros(num_epochs)
   model = autoencoder()
   if model_state_dict is not None:
