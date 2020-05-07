@@ -341,14 +341,14 @@ def train_autoencoder(trainimages, model_state_dict = None, batchsize = 128, num
 
 import time
 flip_num = 5
-model_state = None
-
+model_states = [None] * len(indices)
 test_tuple = (testimages, testlabels)
 err_train_all = np.zeros((flip_num+1, len(indices)))
 err_test_all = np.zeros((flip_num+1, len(indices)))
 
-num_autoencoder_epochs = 16
+num_autoencoder_epochs = 8
 epoch_losses = np.zeros((flip_num, num_autoencoder_epochs))
+
 
 print('Running LeNet5 Without Flipping-----------------------')
 for i in range(len(indices)):
@@ -369,7 +369,7 @@ for j in range(len(indices)):
     print('Running flip %d--------------------------' % (i))
     print('Training autoencoder...')
     start = time.time()
-    model_state, epoch_losses[i-1, :] = train_autoencoder(trainimages, model_state, num_epochs=num_autoencoder_epochs)
+    model_states[j], epoch_losses[i-1, :] = train_autoencoder(trainimages, model_states[j], num_epochs=num_autoencoder_epochs)
     end = time.time()
     hours, rem = divmod(end-start, 3600)
     minutes, seconds = divmod(rem, 60)
@@ -377,15 +377,15 @@ for j in range(len(indices)):
     print('Training LeNet5...')
     start = time.time()
     train_tuple = (trainimages[indices[j]], trainlabels[indices[j]])
-    err_train_all[i, j], err_test_all[i, j], model_state = train(train_tuple, test_tuple, model_state)
+    err_train_all[i, j], err_test_all[i, j], model_states[j] = train(train_tuple, test_tuple, model_states[j])
     print(err_train_all[i, j])
     print(err_test_all[i, j])
     end = time.time()
     hours, rem = divmod(end-start, 3600)
     minutes, seconds = divmod(rem, 60)
     print("time elapsed: {:0>2}:{:0>2}:{:05.2f}".format(int(hours),int(minutes),seconds))
-  print('Epoch losses')
-  print(epoch_losses)
+  print(err_train_all[i])
+  print(err_test_all[i])
 print(err_train_all)
 print(err_test_all)
 
