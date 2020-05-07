@@ -21,7 +21,7 @@ testimages, testlabels = torch.load('/tigress/dkchae/MNIST/processed/test.pt')
 
 # split up the training set into
 indices = []
-plot_samples = np.array([125, 250, 500, 1000, 2000, 4000, 8000, 16000])
+plot_samples = np.array([8000, 16000, 32000])
 for i in range(plot_samples.shape[0]):
   indices.append(np.random.choice(range(IMAGE_SAMPLES), plot_samples[i], replace=False))
 
