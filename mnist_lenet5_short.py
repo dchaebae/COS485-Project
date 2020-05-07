@@ -21,8 +21,7 @@ testimages, testlabels = torch.load('/tigress/dkchae/MNIST/processed/test.pt')
 
 # split up the training set into
 indices = []
-#plot_samples = np.array([250, 1000, 4000, 16000, 60000])
-plot_samples = np.array([125, 250, 500, 1000, 2000, 4000])
+plot_samples = np.array([125, 250, 500, 1000, 2000, 4000, 8000, 16000])
 for i in range(plot_samples.shape[0]):
   indices.append(np.random.choice(range(IMAGE_SAMPLES), plot_samples[i], replace=False))
 
@@ -405,7 +404,7 @@ ax1.set_title('Training Error')
 ax1.legend(loc='upper right')
 ax1.set_xlabel('Log2 Number of Samples')
 ax1.set_ylabel('Proportion Error Rate')
-plt.savefig('train_error_short.png')
+plt.savefig('train_error_long.png')
 
 # Create plot
 fig = plt.figure()
@@ -416,12 +415,12 @@ ax1.set_title('Test Error')
 ax1.legend(loc='upper right')
 ax1.set_xlabel('Log2 Number of Samples')
 ax1.set_ylabel('Proportion Error Rate')
-plt.savefig('test_error_short.png')
+plt.savefig('test_error_long.png')
 
 # Create plot
 fig = plt.figure()
 ax1 = fig.add_subplot(1, 1, 1)
-ax1.plot(range(flip_num * num_autoencoder_epochs), np.flatten(epoch_losses))
+ax1.plot(range(flip_num * num_autoencoder_epochs), np.ndarray.flatten(epoch_losses))
 ax1.set_title('Autoencoder Loss by Epoch')
 ax1.legend(loc='upper right')
 ax1.set_xlabel('Epoch')

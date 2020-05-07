@@ -420,7 +420,7 @@ plt.savefig('test_error_long.png')
 # Create plot
 fig = plt.figure()
 ax1 = fig.add_subplot(1, 1, 1)
-ax1.plot(range(flip_num * num_autoencoder_epochs), np.flatten(epoch_losses))
+ax1.plot(range(flip_num * num_autoencoder_epochs), np.ndarray.flatten(epoch_losses))
 ax1.set_title('Autoencoder Loss by Epoch')
 ax1.legend(loc='upper right')
 ax1.set_xlabel('Epoch')
