@@ -12,4 +12,4 @@ manual_graphing folder has its own README in it.
 
 Images and output logs (most but not all) were put into the folder.
 
-Approach 1 was completed on a Colab notebook: \url{https://colab.research.google.com/drive/1_ul8d6x-NZ0O3jSxyx4frhnuwqV5AW94?usp=sharing}
+Approach 1 was completed on a Colab notebook: https://colab.research.google.com/drive/1_ul8d6x-NZ0O3jSxyx4frhnuwqV5AW94?usp=sharing
